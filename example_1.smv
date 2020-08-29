@@ -1,0 +1,17 @@
+MODULE main
+    IVAR
+        press   : boolean;
+    VAR
+        x : boolean;
+        y : boolean;
+    ASSIGN
+        init(x) := {TRUE, FALSE};
+        init(y) := {TRUE, FALSE};
+        next(x) := x & press;
+        next(y) := x & y & press;
+
+INVARSPEC x
+INVARSPEC !x
+INVARSPEC x&y
+INVARSPEC x -> !y
+INVARSPEC y -> !x
