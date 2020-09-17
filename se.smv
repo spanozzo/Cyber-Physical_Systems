@@ -1,0 +1,21 @@
+MODULE main
+    IVAR
+        press   : boolean;
+    VAR
+        mode    : {on, off};
+        x       : 0..15;
+    ASSIGN
+        init(mode) := on;
+        next(mode) := case
+            mode = off & press              : on;
+            mode = on & (x >= 10)           : off;
+            TRUE                            : mode;
+        esac;
+        init(x) := 0;
+        next(x) := case
+            mode = on & (x >= 10)           : 0;
+            mode = off                      : 0;
+            mode = on & x < 10              : x + 1;
+            TRUE                            : x + 1;
+        esac;
+    INVARSPEC x>11
