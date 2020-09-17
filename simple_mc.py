@@ -31,7 +31,7 @@ def reachable_states(model):
         reach = new.union(reach)
     return reach
     
-def check_explain_eventually(spec):
+def check_explain_eventually_old(spec):
     ltlspec = pynusmv.prop.f(spec)
     print("eventually ltlspec: ", ltlspec)
     model = pynusmv.glob.prop_database().master.bddFsm
@@ -86,6 +86,29 @@ def check_explain_eventually(spec):
                         trace.clear()
     return res, trace
 
+def check_explain_eventually(spec):
+    ltlspec = pynusmv.prop.g(spec)
+    print("eventually ltlspec: ", ltlspec)
+    model = pynusmv.glob.prop_database().master.bddFsm
+    bddspec = spec_to_bdd(model, spec)
+    trace = []
+    res = True
+    reachable = reachable_states(model)
+    not_property = reachable.diff(bddspec)
+    reached = pynusmv.dd.BDD.false()
+    n = 0
+    state = model.init
+    while not(isEmpty(model, state.diff(reached))):
+        reached = reached.union(state)
+        np_state = model.post(state)
+        np_state = np_state.intersection(reachable)
+        state = model.post(state)
+        state_s = model.pick_all_states(state)
+        for s in state_s:
+            print(n," - State: ", s.get_str_values())
+        n += 1
+
+
 def check_explain_always(spec):
     ltlspec = pynusmv.prop.g(spec)
     print("always ltlspec: ", ltlspec)
@@ -126,7 +149,6 @@ def check_explain_always(spec):
     return res, trace
 
 
-
 if len(sys.argv) != 2:
     print("Usage:", sys.argv[0], "filename.smv")
     sys.exit(1)
@@ -140,18 +162,22 @@ for prop in pynusmv.glob.prop_database():
     spec = prop.expr
     if prop.type == invtype:
         print("Property", spec, "is an INVARSPEC.")
+        check_explain_eventually(spec)
+        '''
         res, trace = check_explain_eventually(spec)
         if res == True:
             print("Spec is eventually true")
         else:
             print("Spec is not eventually true")
             print(trace)
+        
         res, trace = check_explain_always(spec)
         if res == True:
             print("Spec is always true")
         else:
             print("Spec is not always true")
             print(trace)
+        '''
     else:
         print("Property", spec, "is not an INVARSPEC, skipped.")
 
