@@ -105,36 +105,26 @@ def check_explain_eventually(spec):
     np_init = model.init.intersection(not_property)
     state = np_init
     state_s = model.pick_all_states(state)
-    for s in state_s:
-        print(depth," - State: ", s.get_str_values())
+    state_i = model.pick_one_state(state)
+    trace.append(state_i.get_str_values())
     while not(isEmpty(model, state.diff(reached))) and not(stop):
         depth += 1
         reached = reached.union(state)
-        np_state = model.post(state).intersection(not_property)
-        state = np_state.intersection(reachable)
-        '''
-        state = model.post(state)
-        '''
-        state_s = model.pick_all_states(state)
-        for s in state_s:
-            print(depth,"- State: ", s.get_str_values())
+        pre_state = state
+        state = model.post(state).intersection(not_property)
+        state_s = model.pick_one_state(state)
+        inp = model.get_inputs_between_states(pre_state, state)
+        inp_i = model.pick_one_inputs(inp)
+        trace.append(inp_i.get_str_values())
+        trace.append(state_s.get_str_values())
         np_reached = state.intersection(reached)
+        # ho trovato stato finale
         if not(isEmpty(model, np_reached)):
             stop = True
             res = False
             print("Final state: ", model.pick_one_state(np_reached).get_str_values())
             state = model.pick_one_state(np_reached)
             trace.append(state.get_str_values())
-            while not(isEmpty(model, state.diff(np_init))):
-                np_state = model.pre(state)
-                np_state = np_state.intersection(reachable).intersection(not_property)
-                inp = model.get_inputs_between_states(np_state, state)
-                inp_i = model.pick_one_inputs(inp)
-                state = model.pre(state, inp_i)
-                state_s = model.pick_one_state(state)
-                inp_i = model.pick_one_inputs(inp)
-                trace.insert(0, inp_i.get_str_values())
-                trace.insert(0, state_s.get_str_values())
 
     print("My eventually is: ", res)
     print("My trace is: ", trace)
