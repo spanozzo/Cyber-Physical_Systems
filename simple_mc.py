@@ -87,6 +87,7 @@ def check_explain_eventually_old(spec):
     return res, trace
 
 def check_explain_eventually(spec):
+    '''
     ltlspec = pynusmv.prop.f(spec)
     print("eventually ltlspec: ", ltlspec)
     model = pynusmv.glob.prop_database().master.bddFsm
@@ -128,6 +129,44 @@ def check_explain_eventually(spec):
 
     print("My eventually is: ", res)
     print("My trace is: ", trace)
+    '''
+    
+    # Seconda opzione: provo variante con always(not x)
+    ltlspec = pynusmv.prop.f(spec)
+    print("eventually ltlspec: ", ltlspec)
+    model = pynusmv.glob.prop_database().master.bddFsm
+    # spec = pynusmv.prop.not_(spec)
+    bddspec = spec_to_bdd(model, spec)
+    trace = []
+    res = True
+    reachable = reachable_states(model)
+    not_property = reachable.diff(bddspec)
+    reached = pynusmv.dd.BDD.false()
+    # si può togliere e tenere solo quello dopo, magari invertendo la logica e ritornando true
+    if not(isEmpty(model, not_property)):
+        bad_state = not_property.intersection(model.init)
+        if not(isEmpty(model, bad_state)):
+            res = False
+            bad_state = model.pick_one_state(bad_state)
+            trace.append(bad_state.get_str_values())
+            state = bad_state
+            reached = pynusmv.dd.BDD.false()
+            # add in 'trace' the elements - states and inputs -  from 'bad_state' to "final" state (e.g. repeated element in a cycle)
+            while not(isEmpty(model, state.diff(reached))) and not(res):
+                reached = reached.union(state)
+                np_state = model.post(state).intersection(not_property)
+                if not(isEmpty(model, np_state)):
+                    inp = model.get_inputs_between_states(state, np_state)
+                    inp_i = model.pick_one_inputs(inp)
+                    state = model.post(state, inp_i)
+                    state_s = model.pick_one_state(state)
+                    trace.append(inp_i.get_str_values())
+                    trace.append(state_s.get_str_values())
+                else:
+                    res = True
+    print("My res: ", res)
+    if not(res):
+        print(trace)
     res, trace = pynusmv.mc.check_explain_ltl_spec(ltlspec)
     return res, trace
 
