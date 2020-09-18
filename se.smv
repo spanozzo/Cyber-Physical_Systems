@@ -8,14 +8,14 @@ MODULE main
         init(mode) := on;
         next(mode) := case
             mode = off & press              : on;
-            mode = on & (x >= 10)           : off;
+            mode = on & press               : off;
             TRUE                            : mode;
         esac;
         init(x) := 0;
         next(x) := case
-            mode = on & (x >= 10)           : 0;
-            mode = off                      : 0;
-            mode = on & x < 10              : x + 1;
+            x = 15                          : 0;
+            mode = off & x > 5              : 0;
+            mode = on & press               : x + 1;
             TRUE                            : x + 1;
         esac;
-    INVARSPEC x>11
+    INVARSPEC mode=off & (x=7 | x=4)

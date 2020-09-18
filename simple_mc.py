@@ -87,87 +87,34 @@ def check_explain_eventually_old(spec):
     return res, trace
 
 def check_explain_eventually(spec):
-    '''
     ltlspec = pynusmv.prop.f(spec)
     print("eventually ltlspec: ", ltlspec)
     model = pynusmv.glob.prop_database().master.bddFsm
     bddspec = spec_to_bdd(model, spec)
     trace = []
     res = True
-    stop = False
     reachable = reachable_states(model)
     not_property = reachable.diff(bddspec)
-    nps = model.pick_all_states(not_property)
-    for np in nps:
-        print("Not property: ", np.get_str_values())
+    init = not_property.intersection(model.init)
+    if(isEmpty(model, init)):
+        return True, []
+    res = False
+    init = model.pick_one_state(init)
+    trace.append(init.get_str_values())
+    state = init
     reached = pynusmv.dd.BDD.false()
-    np_reached = pynusmv.dd.BDD.false()
-    depth = 0
-    np_init = model.init.intersection(not_property)
-    state = np_init
-    state_s = model.pick_all_states(state)
-    state_i = model.pick_one_state(state)
-    trace.append(state_i.get_str_values())
-    while not(isEmpty(model, state.diff(reached))) and not(stop):
-        depth += 1
+    # add in 'trace' the elements - states and inputs -  from 'init' to "final" state (e.g. repeated element in a cycle)
+    while not(isEmpty(model, state.diff(reached))):
         reached = reached.union(state)
-        pre_state = state
-        state = model.post(state).intersection(not_property)
-        state_s = model.pick_one_state(state)
-        inp = model.get_inputs_between_states(pre_state, state)
+        np_state = model.post(state).intersection(not_property)
+        if (isEmpty(model, np_state)):
+            return True, []
+        inp = model.get_inputs_between_states(state, np_state)
         inp_i = model.pick_one_inputs(inp)
+        state = model.post(state, inp_i)
+        state_s = model.pick_one_state(state)
         trace.append(inp_i.get_str_values())
         trace.append(state_s.get_str_values())
-        np_reached = state.intersection(reached)
-        # ho trovato stato finale
-        if not(isEmpty(model, np_reached)):
-            stop = True
-            res = False
-            print("Final state: ", model.pick_one_state(np_reached).get_str_values())
-            state = model.pick_one_state(np_reached)
-            trace.append(state.get_str_values())
-
-    print("My eventually is: ", res)
-    print("My trace is: ", trace)
-    '''
-    
-    # Seconda opzione: provo variante con always(not x)
-    ltlspec = pynusmv.prop.f(spec)
-    print("eventually ltlspec: ", ltlspec)
-    model = pynusmv.glob.prop_database().master.bddFsm
-    # spec = pynusmv.prop.not_(spec)
-    bddspec = spec_to_bdd(model, spec)
-    trace = []
-    res = True
-    reachable = reachable_states(model)
-    not_property = reachable.diff(bddspec)
-    reached = pynusmv.dd.BDD.false()
-    # si può togliere e tenere solo quello dopo, magari invertendo la logica e ritornando true
-    if not(isEmpty(model, not_property)):
-        bad_state = not_property.intersection(model.init)
-        if not(isEmpty(model, bad_state)):
-            res = False
-            bad_state = model.pick_one_state(bad_state)
-            trace.append(bad_state.get_str_values())
-            state = bad_state
-            reached = pynusmv.dd.BDD.false()
-            # add in 'trace' the elements - states and inputs -  from 'bad_state' to "final" state (e.g. repeated element in a cycle)
-            while not(isEmpty(model, state.diff(reached))) and not(res):
-                reached = reached.union(state)
-                np_state = model.post(state).intersection(not_property)
-                if not(isEmpty(model, np_state)):
-                    inp = model.get_inputs_between_states(state, np_state)
-                    inp_i = model.pick_one_inputs(inp)
-                    state = model.post(state, inp_i)
-                    state_s = model.pick_one_state(state)
-                    trace.append(inp_i.get_str_values())
-                    trace.append(state_s.get_str_values())
-                else:
-                    res = True
-    print("My res: ", res)
-    if not(res):
-        print(trace)
-    res, trace = pynusmv.mc.check_explain_ltl_spec(ltlspec)
     return res, trace
 
 def check_explain_always(spec):
@@ -224,11 +171,18 @@ for prop in pynusmv.glob.prop_database():
     if prop.type == invtype:
         print("Property", spec, "is an INVARSPEC.")
         res, trace = check_explain_eventually(spec)
+        ltlspec = pynusmv.prop.f(spec)
+        res1, trace1 = pynusmv.mc.check_explain_ltl_spec(ltlspec)
         if res == True:
             print("Spec is eventually true")
         else:
             print("Spec is not eventually true")
             print(trace)
+        if res1 == True:
+            print("Spec prof is eventually true")
+        else:
+            print("Spec prof is not eventually true")
+            print(trace1)
         '''
         res, trace = check_explain_always(spec)
         if res == True:
