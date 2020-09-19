@@ -3,9 +3,9 @@ MODULE main
         press   : boolean;
     VAR
         mode    : {on, off};
-        x       : 0..15;
+        x       : 0..3;
     ASSIGN
-        init(mode) := on;
+        init(mode) := {on, off};
         next(mode) := case
             mode = off & press              : on;
             mode = on & press               : off;
@@ -13,9 +13,9 @@ MODULE main
         esac;
         init(x) := 0;
         next(x) := case
-            x = 15                          : 0;
-            mode = off & x > 5              : 0;
-            mode = on & press               : x + 1;
+            x = 3                           : 0;
+            mode = off                      : x;
+            mode = on & press               : x;
             TRUE                            : x + 1;
         esac;
-    INVARSPEC mode=off & (x=7 | x=4)
+    INVARSPEC (mode = on & x>2) | (mode=off & x>1)

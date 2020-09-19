@@ -38,29 +38,52 @@ def check_explain_eventually(spec):
     bddspec = spec_to_bdd(model, spec)
     trace = []
     res = True
+    state = model.init
     reachable = reachable_states(model)
-    not_property = reachable.diff(bddspec)
-    init = not_property.intersection(model.init)
-    if(isEmpty(model, init)):
-        return True, []
-    res = False
-    init = model.pick_one_state(init)
-    trace.append(init.get_str_values())
-    state = init
-    reached = pynusmv.dd.BDD.false()
-    # add in 'trace' the elements - states and inputs -  from 'init' to "final" state (e.g. repeated element in a cycle)
-    # return True if a state that satisfy the property is found 
-    while not(isEmpty(model, state.diff(reached))):
-        reached = reached.union(state)
-        np_state = model.post(state).intersection(not_property)
-        if (isEmpty(model, np_state)):
-            return True, []
-        inp = model.get_inputs_between_states(state, np_state)
-        inp_i = model.pick_one_inputs(inp)
-        state = model.post(state, inp_i)
-        state_s = model.pick_one_state(state)
-        trace.append(inp_i.get_str_values())
-        trace.append(state_s.get_str_values())
+    not_property = reachable.diff(bddspec)    
+    not_property_set = model.pick_all_states(not_property)
+    for bad_state in not_property_set:
+        stop = False
+        if(res):
+            trace.clear()
+            # find all the states reachable from the "bad" state (i.e. state that doesn't satisfy the formula)
+            state = bad_state
+            reach = pynusmv.dd.BDD.false()
+            while not(isEmpty(model, state.diff(reach))) and not stop:
+                reach = reach.union(state)
+                state = model.post(state)
+                if(isEmpty(model, state.diff(bddspec))):
+                    stop = True
+            state = bad_state
+            while not(isEmpty(model, state.diff(reach))) and not stop:       
+                reach = reach.union(state)
+                state = model.pre(state)
+                if(isEmpty(model, state.diff(bddspec))):
+                    stop = True
+            # reach contains all reachable states from the "bad" state
+            # bad_reach contains all states reachable from the "bad" state that do not satisfy the formula
+            bad_reach = reach.diff(bddspec)
+            initial_state = bad_reach.intersection(model.init)  
+            if not(isEmpty(model, initial_state)):
+                res = False
+                initial_state = model.pick_one_state(initial_state)
+                state = initial_state
+                trace.append(initial_state.get_str_values())
+                reached = pynusmv.dd.BDD.false()
+                while not(isEmpty(model, state.diff(reached))):
+                    reached = reached.union(state)
+                    post = model.post(state)
+                    post = post.diff(bddspec)
+                    inp = model.get_inputs_between_states(state, post)
+                    if not(isEmpty(model, inp)):
+                        inp_i = model.pick_one_inputs(inp)
+                        state = model.post(state, inp_i)
+                        state_s = model.pick_one_state(state)
+                        trace.append(inp_i.get_str_values())
+                        trace.append(state_s.get_str_values())
+                    else: 
+                        res = True
+                        trace.clear()
     return res, trace
 
 def check_explain_always(spec):
@@ -103,6 +126,7 @@ def check_explain_always(spec):
     return res, trace
 
 
+
 if len(sys.argv) != 2:
     print("Usage:", sys.argv[0], "filename.smv")
     sys.exit(1)
@@ -122,6 +146,13 @@ for prop in pynusmv.glob.prop_database():
         else:
             print("Spec is not eventually true")
             print(trace)
+        ltlspec = pynusmv.prop.f(spec)
+        res1, trace1 = pynusmv.mc.check_explain_ltl_spec(ltlspec)
+        if res1 == True:
+            print("Spec prof is eventually true")
+        else:
+            print("Spec prof is not eventually true")
+            print(trace1)
         res, trace = check_explain_always(spec)
         if res == True:
             print("Spec is always true")
